@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gacha Legend 2D - Infinite Summons</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons & FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Outfit', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        /* Gradient animations & Glows */
+        .glow-common { filter: drop-shadow(0 0 6px rgba(156, 163, 175, 0.6)); }
+        .glow-uncommon { filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.7)); }
+        .glow-rare { filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.8)); }
+        .glow-superrare { filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.85)); }
+        .glow-epic { filter: drop-shadow(0 0 14px rgba(236, 72, 153, 0.9)); }
+        .glow-legendary { filter: drop-shadow(0 0 18px rgba(245, 158, 11, 1)); }
+        .glow-mythic { filter: drop-shadow(0 0 22px rgba(239, 68, 68, 1)); }
+        .glow-special { filter: drop-shadow(0 0 25px rgba(255, 255, 255, 1)); animation: pulseGlow 1.5s infinite alternate; }
+
+        @keyframes pulseGlow {
+            0% { filter: drop-shadow(0 0 15px #00f2fe) drop-shadow(0 0 25px #4facfe); }
+            100% { filter: drop-shadow(0 0 25px #ff0844) drop-shadow(0 0 35px #ffb199); }
+        }
+
+        /* Aura Chromatique Arc-en-ciel */
+        .chromatic-aura {
+            position: relative;
+        }
+        .chromatic-aura::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #00ff00, #00afff, #7a00ff, #ff00c8, #ff0000);
+            background-size: 400%;
+            z-index: -1;
+            animation: rainbowAura 3s linear infinite, auraPulse 1.5s ease-in-out infinite alternate;
+            filter: blur(4px);
+        }
+
+        @keyframes rainbowAura {
+            0% { background-position: 0 0; }
+            100% { background-position: 400% 0; }
+        }
+
+        @keyframes auraPulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            100% { transform: scale(1.1); opacity: 1; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4B5563;
+        }
+
+        /* Modal Overlay */
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Virtual D-pad */
+        .dpad-btn {
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col overflow-x-hidden selection:bg-purple-500 selection:text-white">
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="flex-1 flex flex-col max-w-7xl w-full mx-auto relative min-h-screen">
+
+        <!-- HEADER / NAVIGATION MONNAIES -->
+        <header id="main-header" class="hidden sticky top-0 z-40 glass-panel border-b border-slate-800 px-4 py-3 flex flex-wrap justify-between items-center gap-3 shadow-xl">
+            <!-- Profil & Level summary -->
+            <div class="flex items-center space-x-3">
+                <div id="equipped-avatar-head" class="w-12 h-12 rounded-full border-2 border-yellow-400 bg-slate-800 flex items-center justify-center overflow-hidden shadow-md">
+                    <!-- SVG Avatar dynamically injected -->
+                </div>
+                <div>
+                    <div id="user-display-name" class="font-black text-lg tracking-wide text-amber-400 flex items-center gap-2">
+                        <span>Joueur</span>
+                        <span id="chromatic-badge" class="hidden text-xs bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white font-bold px-2 py-0.5 rounded-full animate-pulse">CHROMATIQUE</span>
+                    </div>
+                    <div class="text-xs text-slate-400 flex items-center gap-1">
+                        <i class="fa-solid fa-user-shield text-indigo-400"></i>
+                        <span id="user-total-power">Puissance: 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monnaies principales -->
+            <div class="flex items-center gap-4 bg-slate-900/90 px-4 py-2 rounded-2xl border border-slate-800">
+                <!-- Pièces -->
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shadow-inner">
+                        <i class="fa-solid fa-coins text-sm"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold">Pièces</span>
+                        <span id="coins-display" class="font-black text-amber-300 text-sm tracking-wide">0</span>
+                    </div>
+                </div>
+
+                <div class="w-px h-7 bg-slate-800"></div>
+
+                <!-- Diamants -->
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-cyan-400 shadow-inner">
+                        <i class="fa-solid fa-gem text-sm"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold">Diamants</span>
+                        <span id="gems-display" class="font-black text-cyan-300 text-sm tracking-wide">0</span>
+                    </div>
+                </div>
+
+                <div class="w-px h-7 bg-slate-800"></div>
+
+                <!-- Points Chromatiques -->
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-pink-500/20 border border-pink-500/50 flex items-center justify-center text-pink-400 shadow-inner">
+                        <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold">Pts Chromatiques</span>
+                        <span id="chroma-display" class="font-black text-pink-300 text-sm tracking-wide">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logout Btn -->
+            <button onclick="logout()" class="text-slate-400 hover:text-red-400 transition-colors p-2 rounded-xl hover:bg-slate-800" title="Déconnexion">
+                <i class="fa-solid fa-right-from-bracket text-lg"></i>
+            </button>
+        </header>
+
+        <!-- MAIN CONTENT TABS CONTAINER -->
+        <main id="main-content" class="flex-1 flex flex-col relative pb-20">
+
+            <!-- TAB 1: ECRAN DE CONNEXION / INSCRIPTION -->
+            <section id="auth-screen" class="flex-1 flex items-center justify-center p-4">
+                <div class="w-full max-w-md glass-panel p-8 rounded-3xl border border-slate-700/60 shadow-2xl relative overflow-hidden">
+                    <div class="absolute -top-12 -left-12 w-32 h-32 bg-purple-600/30 rounded-full blur-2xl"></div>
+                    <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-amber-600/30 rounded-full blur-2xl"></div>
+
+                    <div class="text-center mb-8 relative">
+                        <div class="inline-flex p-4 rounded-2xl bg-gradient-to-tr from-purple-600 to-amber-500 mb-3 shadow-lg shadow-purple-500/30">
+                            <i class="fa-solid fa-dice-d20 text-4xl text-white"></i>
+                        </div>
+                        <h1 class="text-3xl font-black bg-gradient-to-r from-amber-300 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                            GACHA LEGEND 2D
+                        </h1>
+                        <p class="text-slate-400 text-sm mt-1">Connectez-vous pour commencer la collecte infinie</p>
+                    </div>
+
+                    <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-5 relative">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Nom d'utilisateur</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-user absolute left-4 top-3.5 text-slate-500"></i>
+                                <input type="text" id="auth-username" required minlength="3" maxlength="15" placeholder="Nom du héros" 
+                                    class="w-full bg-slate-900/90 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Mot de passe</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-lock absolute left-4 top-3.5 text-slate-500"></i>
+                                <input type="password" id="auth-password" required minlength="4" placeholder="••••••••" 
+                                    class="w-full bg-slate-900/90 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors">
+                            </div>
+                        </div>
+
+                        <div id="auth-error" class="hidden text-xs text-rose-400 bg-rose-950/50 border border-rose-800 p-3 rounded-xl text-center"></div>
+
+                        <div class="pt-2 flex gap-3">
+                            <button type="submit" onclick="authMode='login'" class="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold py-3.5 rounded-xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all">
+                                Connexion
+                            </button>
+                            <button type="submit" onclick="authMode='register'" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold py-3.5 rounded-xl active:scale-95 transition-all">
+                                Créer Compte
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- TAB 2: MAP / EXPLORATION 2D -->
+            <section id="tab-map" class="hidden flex-1 flex flex-col p-4 relative items-center justify-center">
+                <!-- Map Header Status -->
+                <div class="w-full max-w-4xl flex justify-between items-center mb-2 px-2">
+                    <div class="text-xs text-slate-400 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span>Contrôles : ZQSD / Flèches ou D-Pad Tactile</span>
+                    </div>
+                    <div class="text-xs text-amber-400 font-bold bg-amber-950/60 border border-amber-800/60 px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-box-open mr-1"></i> Coffres actifs: <span id="chests-count">0</span>/50
+                    </div>
+                </div>
+
+                <!-- Canvas Wrapper -->
+                <div class="relative w-full max-w-4xl aspect-video md:aspect-[16/9] bg-slate-900 rounded-3xl border-2 border-slate-700/80 shadow-2xl overflow-hidden">
+                    <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+                    <!-- Touch Controls for Mobile -->
+                    <div class="absolute bottom-4 left-4 md:hidden grid grid-cols-3 gap-2 opacity-80 z-10">
+                        <div></div>
+                        <button class="dpad-btn w-12 h-12 bg-slate-800/80 border border-slate-600 rounded-xl text-xl flex items-center justify-center active:bg-amber-500 active:text-black" ontouchstart="handleDpad('up')" ontouchend="handleDpadEnd('up')">▲</button>
+                        <div></div>
+                        <button class="dpad-btn w-12 h-12 bg-slate-800/80 border border-slate-600 rounded-xl text-xl flex items-center justify-center active:bg-amber-500 active:text-black" ontouchstart="handleDpad('left')" ontouchend="handleDpadEnd('left')">◀</button>
+                        <button class="dpad-btn w-12 h-12 bg-slate-800/80 border border-slate-600 rounded-xl text-xl flex items-center justify-center active:bg-amber-500 active:text-black" ontouchstart="handleDpad('down')" ontouchend="handleDpadEnd('down')">▼</button>
+                        <button class="dpad-btn w-12 h-12 bg-slate-800/80 border border-slate-600 rounded-xl text-xl flex items-center justify-center active:bg-amber-500 active:text-black" ontouchstart="handleDpad('right')" ontouchend="handleDpadEnd('right')">▶</button>
+                    </div>
+
+                    <!-- MINIMAP HUD -->
+                    <div class="absolute top-4 right-4 bg-slate-950/85 backdrop-blur-md p-2 rounded-2xl border border-slate-700/80 shadow-xl flex flex-col items-center">
+                        <canvas id="minimapCanvas" width="130" height="97" class="rounded-xl border border-slate-800 bg-slate-900"></canvas>
+                        <span class="text-[10px] font-bold text-amber-400 mt-1 flex items-center gap-1">
+                            <i class="fa-solid fa-compass"></i> Radar Monde (3600×2700)
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: GACHA / TIRAGES -->
+            <section id="tab-gacha" class="hidden flex-1 p-4 max-w-5xl mx-auto w-full flex flex-col justify-center">
+                <!-- Gacha Banner Card -->
+                <div class="glass-panel p-6 md:p-10 rounded-3xl border border-purple-500/30 relative overflow-hidden shadow-2xl flex flex-col items-center text-center">
+                    <!-- Background Glow Effects -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-purple-900/40 via-slate-900/80 to-amber-900/30 pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div class="relative z-10 max-w-2xl">
+                        <span class="px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-purple-600 text-xs font-black uppercase tracking-widest text-slate-950 shadow-md">
+                            Bannière 4000 Héros
+                        </span>
+                        <h2 class="text-3xl md:text-5xl font-black mt-4 mb-2 tracking-tight bg-gradient-to-r from-white via-amber-200 to-purple-300 bg-clip-text text-transparent">
+                            INVOCATIONS CELESTES
+                        </h2>
+                        <p class="text-slate-300 text-sm md:text-base mb-6">
+                            Collectionnez les <span class="text-amber-400 font-bold">4 000 personnages uniques</span> du jeu ! Chaque personnage a une chance égale (1 / 4000) d'être invoqué.
+                        </p>
+
+                        <!-- Summon Buttons -->
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center w-full">
+                            <!-- Tirage x10 -->
+                            <button onclick="performSummon(10)" class="flex-1 group relative bg-gradient-to-b from-indigo-600 to-indigo-800 hover:from-indigo-500 hover:to-indigo-700 text-white rounded-2xl p-4 font-black shadow-xl shadow-indigo-950/50 active:scale-95 transition-all border border-indigo-400/30 overflow-hidden">
+                                <div class="relative z-10 flex flex-col items-center">
+                                    <span class="text-xl">TIRAGE ×10</span>
+                                    <div class="flex items-center gap-1.5 text-amber-300 text-sm mt-1">
+                                        <i class="fa-solid fa-coins"></i>
+                                        <span>500 Pièces</span>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <!-- Tirage x100 -->
+                            <button onclick="performSummon(100)" class="flex-1 group relative bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-slate-950 rounded-2xl p-4 font-black shadow-xl shadow-amber-950/50 active:scale-95 transition-all border border-amber-300/50 overflow-hidden">
+                                <div class="relative z-10 flex flex-col items-center">
+                                    <span class="text-xl">TIRAGE ×100</span>
+                                    <div class="flex items-center gap-1.5 text-slate-950 text-sm mt-1 font-bold">
+                                        <i class="fa-solid fa-coins"></i>
+                                        <span>5 000 Pièces</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: PERSONNAGES & COLLECTION -->
+            <section id="tab-characters" class="hidden flex-1 p-4 max-w-6xl mx-auto w-full flex flex-col gap-6">
+                <!-- Top Toolbar & Chromatic Shop Info -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-black text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users text-amber-400"></i> Collection de Héros
+                            <span id="heroes-collection-count" class="text-sm font-semibold text-slate-400">(0/4000)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">Équiper, améliorer et débloquer les mutations chromatiques.</p>
+                    </div>
+
+                    <!-- Chromatic Shop Box -->
+                    <div class="flex items-center gap-3 bg-gradient-to-r from-pink-950/40 via-purple-950/40 to-slate-900 border border-pink-500/30 px-4 py-2.5 rounded-xl">
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-pink-300">Boutique Chromatique</div>
+                            <div class="text-[10px] text-slate-400">150 Pts = 1 Mutation</div>
+                        </div>
+                        <button onclick="buyChromaticMutation()" class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white px-3 py-2 rounded-lg font-bold text-xs shadow-lg shadow-pink-500/20 active:scale-95 transition-all">
+                            Acheter (150 Pts)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="flex flex-wrap gap-3 items-center">
+                    <input type="text" id="character-search" oninput="renderCharactersGrid()" placeholder="Rechercher par Nom ou ID (#1 - #4000)..." 
+                           class="bg-slate-900 border border-slate-700 text-xs px-3 py-2 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 w-full sm:w-64">
+                    <button onclick="filterCollection('ALL')" class="filter-btn px-3 py-1.5 rounded-xl bg-amber-500 text-black text-xs font-bold transition-colors">Tous débloqués</button>
+                    <button onclick="filterCollection('ELEMENT')" class="filter-btn px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white transition-colors">Trier par Élément</button>
+                </div>
+
+                <!-- Characters Grid -->
+                <div id="characters-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <!-- Dynamic Hero Cards Inject Here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- BOTTOM NAVIGATION BAR -->
+        <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-800 z-40 max-w-7xl mx-auto">
+            <div class="flex justify-around items-center h-16 px-2">
+                <button onclick="switchTab('map')" id="nav-btn-map" class="nav-tab-btn flex flex-col items-center justify-center w-full h-full text-amber-400 font-bold transition-all">
+                    <i class="fa-solid fa-map text-xl mb-1"></i>
+                    <span class="text-[11px]">Carte</span>
+                </button>
+                <button onclick="switchTab('gacha')" id="nav-btn-gacha" class="nav-tab-btn flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-white font-semibold transition-all">
+                    <i class="fa-solid fa-dice text-xl mb-1"></i>
+                    <span class="text-[11px]">Tirages</span>
+                </button>
+                <button onclick="switchTab('characters')" id="nav-btn-characters" class="nav-tab-btn flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-white font-semibold transition-all">
+                    <i class="fa-solid fa-user-group text-xl mb-1"></i>
+                    <span class="text-[11px]">Personnages</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- SUMMON ANIMATION OVERLAY MODAL -->
+        <div id="summon-modal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 overflow-hidden">
+            <!-- Skip Button -->
+            <button onclick="skipSummonAnimation()" class="absolute top-6 right-6 bg-slate-800/80 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl text-xs border border-slate-600 z-50 cursor-pointer">
+                Passer L'animation <i class="fa-solid fa-forward ml-1"></i>
+            </button>
+
+            <!-- Summon Reveal Stage -->
+            <div id="summon-stage" class="w-full max-w-5xl flex flex-col items-center justify-center relative my-auto">
+                <!-- Portal Beam Graphic -->
+                <div id="summon-portal" class="w-64 h-64 rounded-full border-4 border-amber-400/50 flex items-center justify-center relative transition-all duration-700 animate-spin">
+                    <div class="w-48 h-48 rounded-full border-4 border-purple-500/50 animate-ping"></div>
+                </div>
+
+                <!-- Reveal Grid / Hero Display -->
+                <div id="summon-results-container" class="hidden w-full max-h-[65vh] overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mt-4 border border-slate-800 rounded-2xl bg-slate-900/90 shadow-2xl">
+                    <!-- Results dynamically inserted -->
+                </div>
+
+                <button id="summon-close-btn" onclick="closeSummonModal()" class="hidden mt-6 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-8 py-3 rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all text-sm cursor-pointer">
+                    RÉCUPÉRER TOUT
+                </button>
+            </div>
+        </div>
+
+        <!-- NOTIFICATION TOAST CONTAINER -->
+        <div id="toast-container" class="fixed top-16 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    </div>
+
+    <!-- GAME LOGIC JAVASCRIPT -->
+    <script>
+        /* ==========================================================================
+           1. GENERATION DE EXACTEMENT 4000 PERSONNAGES UNIQUES (PROBA 1/4000)
+           ========================================================================== */
+        const THEMES = [
+            { name: 'Feu', primary: '#ef4444', secondary: '#f97316', icon: 'fa-fire' },
+            { name: 'Eau', primary: '#3b82f6', secondary: '#06b6d4', icon: 'fa-droplet' },
+            { name: 'Ombre', primary: '#8b5cf6', secondary: '#4c1d95', icon: 'fa-moon' },
+            { name: 'Lumière', primary: '#f59e0b', secondary: '#fef08a', icon: 'fa-sun' },
+            { name: 'Cyber', primary: '#10b981', secondary: '#06b6d4', icon: 'fa-microchip' },
+            { name: 'Cosmique', primary: '#ec4899', secondary: '#6366f1', icon: 'fa-star' },
+            { name: 'Nature', primary: '#84cc16', secondary: '#15803d', icon: 'fa-leaf' },
+            { name: 'Foudre', primary: '#eab308', secondary: '#fef08a', icon: 'fa-bolt' }
+        ];
+
+        const NAME_PREFIXES = ['Aero', 'Kael', 'Zyra', 'Vortex', 'Ignis', 'Valen', 'Nyx', 'Sol', 'Drak', 'Zephyr', 'Orion', 'Lyra', 'Titan', 'Apex', 'Astra', 'Nova', 'Rift', 'Shadow', 'Blade', 'Cipher', 'Chronos', 'Hyperion', 'Nexus', 'Volcan', 'Aura', 'Elysium', 'Aether', 'Spectra', 'Phantom', 'Zenith'];
+        const NAME_SUFFIXES = ['is', 'or', 'us', 'ia', 'on', 'um', 'ath', 'zar', 'mir', 'vex', 'ia', 'rix', 'os', 'wyn', 'gond', 'vane', 'tron', 'th', 'dox', 'lune', 'storm', 'core', 'strike', 'shade', 'pulse'];
+        const TITLES = ['Le Sanguinaire', 'L\'Invincible', 'L\'Ombre', 'Le Céleste', 'Le Destructeur', 'L\'Éternel', 'Le Protecteur', 'L\'Architecte', 'Le Vengeur', 'Le Gardien', 'Le Mirage', 'Le Déchu'];
+
+        // Base de données contenant exactement 4000 héros
+        const TOTAL_HEROES_COUNT = 4000;
+        const HEROES_DATABASE = [];
+
+        function generateHeroDatabase() {
+            for (let i = 1; i <= TOTAL_HEROES_COUNT; i++) {
+                const prefix = NAME_PREFIXES[i % NAME_PREFIXES.length];
+                const suffix = NAME_SUFFIXES[(i * 3) % NAME_SUFFIXES.length];
+                const title = TITLES[i % TITLES.length];
+                const theme = THEMES[i % THEMES.length];
+                
+                HEROES_DATABASE.push({
+                    id: `hero_${i}`,
+                    numId: i,
+                    name: `${prefix}${suffix}`,
+                    title: title,
+                    theme: theme,
+                    basePower: 10 + (i % 50),
+                    shape: (i % 3 === 0) ? 'circle' : ((i % 3 === 1) ? 'diamond' : 'square')
+                });
+            }
+        }
+        generateHeroDatabase();
+
+        /* ==========================================================================
+           2. GLOBAL STATE & USER ACCOUNT STORAGE
+           ========================================================================== */
+        let currentUser = null;
+        let authMode = 'login';
+        let currentTab = 'map';
+        let selectedFilter = 'ALL';
+
+        let gameState = {
+            coins: 0,
+            gems: 0,
+            chromaticPoints: 0,
+            ownedHeroes: {}, // { heroId: { level: 1, chromatic: false } }
+            equippedHeroId: 'hero_1',
+            availableMutations: 0,
+            playerPos: { x: 1800, y: 1350 }
+        };
+
+        // Starter hero
+        gameState.ownedHeroes['hero_1'] = { level: 1, chromatic: false };
+
+        /* ==========================================================================
+           3. CANVAS & MAP (SAME ENHANCED 50-CHESTS WORLD)
+           ========================================================================== */
+        let canvas, ctx;
+        let minimapCanvas, minimapCtx;
+        let keys = {};
+        let touchDirections = { up: false, down: false, left: false, right: false };
+
+        const MAP_WIDTH = 3600;
+        const MAP_HEIGHT = 2700;
+
+        const CHEST_SPOTS = [];
+        function generateChests() {
+            CHEST_SPOTS.length = 0;
+            const TOTAL_CHESTS = 50;
+            const margin = 150;
+            
+            for (let i = 0; i < TOTAL_CHESTS; i++) {
+                const rx = Math.floor(margin + Math.random() * (MAP_WIDTH - margin * 2));
+                const ry = Math.floor(margin + Math.random() * (MAP_HEIGHT - margin * 2));
+                CHEST_SPOTS.push({
+                    id: i + 1,
+                    x: rx,
+                    y: ry,
+                    active: true,
+                    respawnTimer: 0
+                });
+            }
+        }
+        generateChests();
+
+        function initCanvas() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            minimapCanvas = document.getElementById('minimapCanvas');
+            minimapCtx = minimapCanvas.getContext('2d');
+            
+            canvas.width = 960;
+            canvas.height = 540;
+
+            window.addEventListener('keydown', e => keys[e.code] = true);
+            window.addEventListener('keyup', e => keys[e.code] = false);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        let lastTime = performance.now();
+
+        function gameLoop(currentTime) {
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            if (currentTab === 'map' && currentUser) {
+                updateMap(deltaTime);
+                renderMap();
+                renderMinimap();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateMap(dt) {
+            const speed = 320;
+            let dx = 0;
+            let dy = 0;
+
+            if (keys['KeyW'] || keys['ArrowUp'] || touchDirections.up) dy -= 1;
+            if (keys['KeyS'] || keys['ArrowDown'] || touchDirections.down) dy += 1;
+            if (keys['KeyA'] || keys['ArrowLeft'] || touchDirections.left) dx -= 1;
+            if (keys['KeyD'] || keys['ArrowRight'] || touchDirections.right) dx += 1;
+
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.7071;
+                dy *= 0.7071;
+            }
+
+            gameState.playerPos.x += dx * speed * dt;
+            gameState.playerPos.y += dy * speed * dt;
+
+            gameState.playerPos.x = Math.max(40, Math.min(MAP_WIDTH - 40, gameState.playerPos.x));
+            gameState.playerPos.y = Math.max(40, Math.min(MAP_HEIGHT - 40, gameState.playerPos.y));
+
+            let activeCount = 0;
+            CHEST_SPOTS.forEach(chest => {
+                if (!chest.active) {
+                    chest.respawnTimer -= dt;
+                    if (chest.respawnTimer <= 0) {
+                        chest.active = true;
+                    }
+                } else {
+                    activeCount++;
+                    const dist = Math.hypot(gameState.playerPos.x - chest.x, gameState.playerPos.y - chest.y);
+                    if (dist < 45) {
+                        openChest(chest);
+                    }
+                }
+            });
+
+            document.getElementById('chests-count').innerText = activeCount;
+        }
+
+        function openChest(chest) {
+            chest.active = false;
+            chest.respawnTimer = 60;
+
+            const coinsEarned = Math.floor(Math.random() * (1100 - 200 + 1)) + 200;
+            const gemsEarned = Math.floor(Math.random() * (500 - 100 + 1)) + 100;
+
+            gameState.coins += coinsEarned;
+            gameState.gems += gemsEarned;
+
+            updateUI();
+            saveUserData();
+
+            showToast(`Coffre Récolté ! +${coinsEarned} Pièces, +${gemsEarned} Diamants`, 'success');
+        }
+
+        function renderMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let cameraX = gameState.playerPos.x - canvas.width / 2;
+            let cameraY = gameState.playerPos.y - canvas.height / 2;
+
+            cameraX = Math.max(0, Math.min(MAP_WIDTH - canvas.width, cameraX));
+            cameraY = Math.max(0, Math.min(MAP_HEIGHT - canvas.height, cameraY));
+
+            ctx.save();
+            ctx.translate(-cameraX, -cameraY);
+
+            ctx.fillStyle = '#0b1329';
+            ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            const gridSize = 100;
+            for (let x = 0; x < MAP_WIDTH; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, MAP_HEIGHT);
+                ctx.stroke();
+            }
+            for (let y = 0; y < MAP_HEIGHT; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(MAP_WIDTH, y);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+            CHEST_SPOTS.forEach(chest => {
+                if (chest.x + 40 < cameraX || chest.x - 40 > cameraX + canvas.width ||
+                    chest.y + 40 < cameraY || chest.y - 40 > cameraY + canvas.height) {
+                    return;
+                }
+
+                if (chest.active) {
+                    ctx.save();
+                    ctx.shadowColor = '#f59e0b';
+                    ctx.shadowBlur = 14;
+
+                    ctx.fillStyle = '#d97706';
+                    ctx.beginPath();
+                    ctx.roundRect(chest.x - 22, chest.y - 16, 44, 32, 7);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fef08a';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#78350f';
+                    ctx.beginPath();
+                    ctx.arc(chest.x, chest.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = '#1e293b';
+                    ctx.beginPath();
+                    ctx.arc(chest.x, chest.y, 16, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = 'bold 10px Outfit';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${Math.ceil(chest.respawnTimer)}s`, chest.x, chest.y);
+                }
+            });
+
+            const equippedHero = HEROES_DATABASE.find(h => h.id === gameState.equippedHeroId) || HEROES_DATABASE[0];
+            const heroState = gameState.ownedHeroes[equippedHero.id] || { level: 1, chromatic: false };
+
+            ctx.save();
+            ctx.translate(gameState.playerPos.x, gameState.playerPos.y);
+
+            if (heroState.chromatic) {
+                const time = performance.now() * 0.003;
+                const gradient = ctx.createConicGradient(time, 0, 0);
+                gradient.addColorStop(0, '#ff0000');
+                gradient.addColorStop(0.2, '#fffb00');
+                gradient.addColorStop(0.4, '#00ff00');
+                gradient.addColorStop(0.6, '#00afff');
+                gradient.addColorStop(0.8, '#ff00c8');
+                gradient.addColorStop(1, '#ff0000');
+
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 7;
+                ctx.shadowColor = '#ff00c8';
+                ctx.shadowBlur = 18;
+                ctx.beginPath();
+                ctx.arc(0, 0, 28, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            ctx.shadowColor = equippedHero.theme.primary;
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = equippedHero.theme.primary;
+
+            if (equippedHero.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (equippedHero.shape === 'diamond') {
+                ctx.beginPath();
+                ctx.moveTo(0, -24);
+                ctx.lineTo(24, 0);
+                ctx.lineTo(0, 24);
+                ctx.lineTo(-24, 0);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                ctx.beginPath();
+                ctx.roundRect(-20, -20, 40, 40, 8);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = equippedHero.theme.secondary;
+            ctx.beginPath();
+            ctx.arc(0, 0, 9, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Lvl ${heroState.level}`, 0, -32);
+
+            ctx.restore();
+            ctx.restore();
+        }
+
+        function renderMinimap() {
+            if (!minimapCtx) return;
+
+            const mw = minimapCanvas.width;
+            const mh = minimapCanvas.height;
+
+            minimapCtx.clearRect(0, 0, mw, mh);
+            minimapCtx.fillStyle = '#090d16';
+            minimapCtx.fillRect(0, 0, mw, mh);
+
+            const scaleX = mw / MAP_WIDTH;
+            const scaleY = mh / MAP_HEIGHT;
+
+            CHEST_SPOTS.forEach(chest => {
+                if (chest.active) {
+                    minimapCtx.fillStyle = '#f59e0b';
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(chest.x * scaleX, chest.y * scaleY, 2.2, 0, Math.PI * 2);
+                    minimapCtx.fill();
+                }
+            });
+
+            const px = gameState.playerPos.x * scaleX;
+            const py = gameState.playerPos.y * scaleY;
+
+            minimapCtx.fillStyle = '#00f2fe';
+            minimapCtx.shadowColor = '#00f2fe';
+            minimapCtx.shadowBlur = 8;
+            minimapCtx.beginPath();
+            minimapCtx.arc(px, py, 4, 0, Math.PI * 2);
+            minimapCtx.fill();
+            minimapCtx.shadowBlur = 0;
+        }
+
+        function handleDpad(dir) { touchDirections[dir] = true; }
+        function handleDpadEnd(dir) { touchDirections[dir] = false; }
+
+        /* ==========================================================================
+           4. GACHA SUMMON SYSTEM (1/4000 EQUAL CHANCE, COST 500 / 5000)
+           ========================================================================== */
+        let isSummoning = false;
+        let summonResults = [];
+        let animationSkipped = false;
+
+        function getRandomHero() {
+            // Probabilité uniforme 1 / 4000 pour chaque personnage
+            const randomIndex = Math.floor(Math.random() * TOTAL_HEROES_COUNT);
+            return HEROES_DATABASE[randomIndex];
+        }
+
+        function performSummon(count) {
+            const cost = count === 10 ? 500 : 5000;
+            if (gameState.coins < cost) {
+                showToast(`Pièces insuffisantes ! Il vous faut ${cost} pièces.`, 'error');
+                return;
+            }
+
+            gameState.coins -= cost;
+            updateUI();
+
+            summonResults = [];
+            let newChromaPointsGained = 0;
+
+            for (let i = 0; i < count; i++) {
+                const hero = getRandomHero();
+                const isDuplicate = !!gameState.ownedHeroes[hero.id];
+
+                if (isDuplicate) {
+                    gameState.chromaticPoints += 1;
+                    newChromaPointsGained += 1;
+                } else {
+                    gameState.ownedHeroes[hero.id] = { level: 1, chromatic: false };
+                }
+
+                summonResults.push({ hero, isDuplicate });
+            }
+
+            saveUserData();
+            startSummonAnimation(summonResults, newChromaPointsGained);
+        }
+
+        function startSummonAnimation(results, extraChroma) {
+            isSummoning = true;
+            animationSkipped = false;
+
+            const modal = document.getElementById('summon-modal');
+            const portal = document.getElementById('summon-portal');
+            const container = document.getElementById('summon-results-container');
+            const closeBtn = document.getElementById('summon-close-btn');
+
+            modal.classList.remove('hidden');
+            portal.classList.remove('hidden');
+            container.classList.add('hidden');
+            closeBtn.classList.add('hidden');
+            container.innerHTML = '';
+
+            setTimeout(() => {
+                if (animationSkipped) return;
+                portal.classList.add('hidden');
+                displaySummonResults(results, extraChroma);
+            }, 1200);
+        }
+
+        function skipSummonAnimation() {
+            if (!isSummoning) return;
+            animationSkipped = true;
+            document.getElementById('summon-portal').classList.add('hidden');
+            displaySummonResults(summonResults, 0);
+        }
+
+        function displaySummonResults(results, extraChroma) {
+            const container = document.getElementById('summon-results-container');
+            const closeBtn = document.getElementById('summon-close-btn');
+
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+            closeBtn.classList.remove('hidden');
+
+            // Affichage complet et garanti de tous les personnages tirés
+            results.forEach((item, index) => {
+                const hero = item.hero;
+                const heroState = gameState.ownedHeroes[hero.id] || { level: 1, chromatic: false };
+
+                const cardHtml = `
+                    <div class="glass-panel p-3 rounded-2xl border ${item.isDuplicate ? 'border-pink-500/40 bg-pink-950/20' : 'border-emerald-500/40 bg-emerald-950/20'} flex flex-col items-center justify-between text-center relative overflow-hidden">
+                        <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded text-amber-300 bg-slate-950/80">
+                            #${hero.numId}
+                        </span>
+
+                        <div class="w-12 h-12 rounded-full border-2 border-slate-700 flex items-center justify-center my-2 shadow-md ${heroState.chromatic ? 'chromatic-aura' : ''}" style="background-color: ${hero.theme.primary}">
+                            <i class="fa-solid ${hero.theme.icon} text-white text-lg"></i>
+                        </div>
+
+                        <div class="w-full">
+                            <h4 class="font-extrabold text-xs text-white truncate">${hero.name}</h4>
+                            <div class="text-[9px] text-amber-300 font-semibold truncate">${hero.theme.name}</div>
+                        </div>
+
+                        <div class="mt-2 w-full">
+                            ${item.isDuplicate 
+                                ? '<span class="inline-block text-[9px] text-pink-300 bg-pink-950/80 border border-pink-700/50 px-2 py-0.5 rounded-full font-extrabold w-full truncate">+1 Pt Chromatique</span>' 
+                                : '<span class="inline-block text-[9px] text-emerald-300 bg-emerald-950/80 border border-emerald-700/50 px-2 py-0.5 rounded-full font-extrabold w-full truncate">NOUVEAU !</span>'}
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        function closeSummonModal() {
+            document.getElementById('summon-modal').classList.add('hidden');
+            isSummoning = false;
+            updateUI();
+            renderCharactersGrid();
+        }
+
+        /* ==========================================================================
+           5. CHARACTERS & LEVEL UP (10% INCREASE COST & 150 CHROMATIC MUTATION)
+           ========================================================================== */
+        function calculateLevelCost(level) {
+            // Coût = floor(100 * (1.10 ^ (niveau - 1)))
+            return Math.floor(100 * Math.pow(1.10, level - 1));
+        }
+
+        function renderCharactersGrid() {
+            const grid = document.getElementById('characters-grid');
+            grid.innerHTML = '';
+
+            const searchQuery = (document.getElementById('character-search')?.value || '').toLowerCase().trim();
+
+            let ownedCount = Object.keys(gameState.ownedHeroes).length;
+
+            HEROES_DATABASE.forEach(hero => {
+                const isOwned = !!gameState.ownedHeroes[hero.id];
+                
+                // Afficher uniquement les héros possédés par défaut ou filtrés par la recherche
+                if (!isOwned && !searchQuery) return;
+
+                if (searchQuery) {
+                    const matchName = hero.name.toLowerCase().includes(searchQuery);
+                    const matchId = `#${hero.numId}`.includes(searchQuery) || hero.numId.toString() === searchQuery;
+                    if (!matchName && !matchId) return;
+                }
+
+                const heroState = gameState.ownedHeroes[hero.id] || { level: 1, chromatic: false };
+                const isEquipped = gameState.equippedHeroId === hero.id;
+                const levelCost = calculateLevelCost(heroState.level);
+                const currentPower = Math.floor(hero.basePower * (1 + (heroState.level - 1) * 0.15));
+
+                const cardHtml = `
+                    <div class="glass-panel p-4 rounded-2xl border ${isOwned ? 'border-slate-700 bg-slate-900/90' : 'border-slate-800 opacity-40 grayscale'} flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:border-amber-400">
+                        ${heroState.chromatic ? '<div class="absolute inset-0 bg-gradient-to-tr from-pink-500/10 via-purple-500/10 to-cyan-500/10 animate-pulse pointer-events-none"></div>' : ''}
+
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md text-amber-300 bg-slate-950">
+                                    #${hero.numId}
+                                </span>
+                                ${heroState.chromatic ? '<i class="fa-solid fa-wand-magic-sparkles text-pink-400 text-xs animate-bounce" title="Mutation Chromatique Appliquée"></i>' : ''}
+                            </div>
+
+                            <div class="flex flex-col items-center my-2">
+                                <div class="w-16 h-16 rounded-full border-2 border-slate-700 flex items-center justify-center relative shadow-lg ${heroState.chromatic ? 'chromatic-aura' : ''}" style="background-color: ${hero.theme.primary}">
+                                    <i class="fa-solid ${hero.theme.icon} text-white text-2xl"></i>
+                                </div>
+                                <h3 class="font-extrabold text-base text-white mt-2 truncate max-w-full">${hero.name}</h3>
+                                <div class="text-[10px] text-amber-300 font-semibold">${hero.title}</div>
+                                <div class="text-xs text-slate-300 font-semibold mt-1">Niv. ${heroState.level} | Pow. ${currentPower}</div>
+                            </div>
+                        </div>
+
+                        ${isOwned ? `
+                            <div class="space-y-2 mt-2">
+                                ${isEquipped ? `
+                                    <button class="w-full bg-emerald-600/30 border border-emerald-500 text-emerald-300 font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-1 cursor-default">
+                                        <i class="fa-solid fa-check"></i> Équipé
+                                    </button>
+                                ` : `
+                                    <button onclick="equipHero('${hero.id}')" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-1.5 rounded-xl text-xs active:scale-95 transition-all">
+                                        Équiper
+                                    </button>
+                                `}
+
+                                <button onclick="levelUpHero('${hero.id}')" class="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-1 active:scale-95 transition-all">
+                                    <span>Améliorer</span>
+                                    <span class="text-[10px] text-cyan-200">(${levelCost} <i class="fa-solid fa-gem"></i>)</span>
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="text-center py-3 text-xs text-slate-500 font-semibold">Non Débloqué</div>
+                        `}
+                    </div>
+                `;
+
+                grid.insertAdjacentHTML('beforeend', cardHtml);
+            });
+
+            document.getElementById('heroes-collection-count').innerText = `(${ownedCount}/4000)`;
+        }
+
+        function filterCollection(type) {
+            selectedFilter = type;
+            renderCharactersGrid();
+        }
+
+        function equipHero(heroId) {
+            gameState.equippedHeroId = heroId;
+            saveUserData();
+            updateUI();
+            renderCharactersGrid();
+            showToast('Héros équipé !', 'info');
+        }
+
+        function levelUpHero(heroId) {
+            const heroState = gameState.ownedHeroes[heroId];
+            if (!heroState) return;
+
+            const cost = calculateLevelCost(heroState.level);
+            if (gameState.gems < cost) {
+                showToast(`Diamants insuffisants ! (${cost} requis)`, 'error');
+                return;
+            }
+
+            gameState.gems -= cost;
+            heroState.level += 1;
+
+            saveUserData();
+            updateUI();
+            renderCharactersGrid();
+            showToast(`${HEROES_DATABASE.find(h=>h.id===heroId).name} est maintenant Niveau ${heroState.level} !`, 'success');
+        }
+
+        function buyChromaticMutation() {
+            if (gameState.chromaticPoints < 150) {
+                showToast(`Points Chromatiques insuffisants (150 requis)`, 'error');
+                return;
+            }
+
+            gameState.chromaticPoints -= 150;
+            gameState.availableMutations += 1;
+
+            const equippedState = gameState.ownedHeroes[gameState.equippedHeroId];
+            if (equippedState) {
+                equippedState.chromatic = true;
+            }
+
+            saveUserData();
+            updateUI();
+            renderCharactersGrid();
+            showToast(`Mutation Chromatique (150 Pts) appliquée à votre héros !`, 'success');
+        }
+
+        /* ==========================================================================
+           6. AUTHENTICATION & UI HELPERS
+           ========================================================================== */
+        function handleAuth(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('auth-username').value.trim();
+            const passwordInput = document.getElementById('auth-password').value.trim();
+            const errorDiv = document.getElementById('auth-error');
+
+            if (!usernameInput || !passwordInput) return;
+
+            const storageKey = `gacha_user_${usernameInput.toLowerCase()}`;
+            const existingData = localStorage.getItem(storageKey);
+
+            if (authMode === 'register') {
+                if (existingData) {
+                    errorDiv.innerText = "Ce nom d'utilisateur existe déjà !";
+                    errorDiv.classList.remove('hidden');
+                    return;
+                }
+
+                const newUserAccount = {
+                    username: usernameInput,
+                    password: passwordInput,
+                    gameState: gameState
+                };
+
+                localStorage.setItem(storageKey, JSON.stringify(newUserAccount));
+                currentUser = usernameInput;
+                loginSuccess();
+            } else {
+                if (!existingData) {
+                    errorDiv.innerText = "Compte introuvable. Veuillez créer un compte.";
+                    errorDiv.classList.remove('hidden');
+                    return;
+                }
+
+                const userAccount = JSON.parse(existingData);
+                if (userAccount.password !== passwordInput) {
+                    errorDiv.innerText = "Mot de passe incorrect.";
+                    errorDiv.classList.remove('hidden');
+                    return;
+                }
+
+                currentUser = usernameInput;
+                gameState = Object.assign(gameState, userAccount.gameState);
+                loginSuccess();
+            }
+        }
+
+        function loginSuccess() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-header').classList.remove('hidden');
+            document.getElementById('bottom-nav').classList.remove('hidden');
+
+            document.getElementById('user-display-name').querySelector('span').innerText = currentUser;
+
+            switchTab('map');
+            updateUI();
+            initCanvas();
+            showToast(`Bienvenue, ${currentUser} !`, 'success');
+        }
+
+        function logout() {
+            saveUserData();
+            currentUser = null;
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('main-header').classList.add('hidden');
+            document.getElementById('bottom-nav').classList.add('hidden');
+            document.getElementById('tab-map').classList.add('hidden');
+            document.getElementById('tab-gacha').classList.add('hidden');
+            document.getElementById('tab-characters').classList.add('hidden');
+        }
+
+        function saveUserData() {
+            if (!currentUser) return;
+            const storageKey = `gacha_user_${currentUser.toLowerCase()}`;
+            const userAccount = JSON.parse(localStorage.getItem(storageKey)) || {};
+            userAccount.gameState = gameState;
+            localStorage.setItem(storageKey, JSON.stringify(userAccount));
+        }
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.getElementById('tab-map').classList.add('hidden');
+            document.getElementById('tab-gacha').classList.add('hidden');
+            document.getElementById('tab-characters').classList.add('hidden');
+
+            document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.replace('text-amber-400', 'text-slate-400'));
+
+            if (tabId === 'map') {
+                document.getElementById('tab-map').classList.remove('hidden');
+                document.getElementById('nav-btn-map').classList.replace('text-slate-400', 'text-amber-400');
+            } else if (tabId === 'gacha') {
+                document.getElementById('tab-gacha').classList.remove('hidden');
+                document.getElementById('nav-btn-gacha').classList.replace('text-slate-400', 'text-amber-400');
+            } else if (tabId === 'characters') {
+                document.getElementById('tab-characters').classList.remove('hidden');
+                document.getElementById('nav-btn-characters').classList.replace('text-slate-400', 'text-amber-400');
+                renderCharactersGrid();
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('coins-display').innerText = gameState.coins.toLocaleString();
+            document.getElementById('gems-display').innerText = gameState.gems.toLocaleString();
+            document.getElementById('chroma-display').innerText = gameState.chromaticPoints.toLocaleString();
+
+            let totalPower = 0;
+            Object.entries(gameState.ownedHeroes).forEach(([hId, state]) => {
+                const hero = HEROES_DATABASE.find(h => h.id === hId);
+                if (hero) {
+                    totalPower += Math.floor(hero.basePower * (1 + (state.level - 1) * 0.15));
+                }
+            });
+            document.getElementById('user-total-power').innerText = `Puissance: ${totalPower.toLocaleString()}`;
+
+            const equippedHero = HEROES_DATABASE.find(h => h.id === gameState.equippedHeroId) || HEROES_DATABASE[0];
+            const headDiv = document.getElementById('equipped-avatar-head');
+            headDiv.style.backgroundColor = equippedHero.theme.primary;
+            headDiv.innerHTML = `<i class="fa-solid ${equippedHero.theme.icon} text-white text-lg"></i>`;
+
+            const chromaBadge = document.getElementById('chromatic-badge');
+            const equippedState = gameState.ownedHeroes[gameState.equippedHeroId];
+            if (equippedState && equippedState.chromatic) {
+                chromaBadge.classList.remove('hidden');
+            } else {
+                chromaBadge.classList.add('hidden');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const bgClass = type === 'success' ? 'bg-emerald-900 border-emerald-500 text-emerald-200' :
+                            type === 'error' ? 'bg-rose-900 border-rose-500 text-rose-200' :
+                            'bg-slate-900 border-slate-700 text-slate-200';
+
+            toast.className = `glass-panel px-4 py-3 rounded-xl border ${bgClass} text-xs font-bold shadow-2xl flex items-center gap-2 transform translate-x-10 opacity-0 transition-all duration-300 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-10', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
